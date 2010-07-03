@@ -198,7 +198,7 @@
 
     </div>
 
-    <script type="text/javascript;version=1.8">
+    <script type="text/javascript">
       /**************************************************************************/
 
       function gauss () {
@@ -219,7 +219,7 @@
         return Math.random(d) + from;
       }
 
-      const hrtbl = [
+      var hrtbl = [
         [0, 3, 1],
         [2, 0, 1],
         [1, 0, 3],
@@ -433,7 +433,7 @@
 
       button.addEventListener(
         'click',
-        function () drawBaseImage(),
+        function () {drawBaseImage();},
         true
       );
 
@@ -490,12 +490,11 @@
           var context = colorview.getContext('2d');
           context.fillStyle = color.value;
           context.fillRect(0, 0, 100, 100);
-          let cs = context.getImageData(0, 0, 1, 1).data;
+          var cs = context.getImageData(0, 0, 1, 1).data;
           rgbdata = [cs[0] / 255, cs[1] / 255, cs[2] / 255];
         },
         true
       );
-
 
     </script>
 
