@@ -278,11 +278,13 @@
         var xc = opt.xcenter, yc = opt.ycenter;
         var x1 = 0, y1 = 0, x2 = width, y2 = height;
 
-        var pixels = context.getImageData(0, 0, width, height).data;
+        var imgData = context.getImageData(0, 0, width, height);
+        var pixels = imgData.data;
 
         var spoke = [];
         var spokecolor = [];
         var hsv = rgb2hsv.apply(null, opt.color);
+
 
         for (var i = 0; i < opt.nspoke; i++) {
           spoke.push(gauss());
@@ -366,16 +368,15 @@
               color.b *= 255;
             }
 
-            context.fillStyle = 'rgb(' + [
-              parseInt(clamp(color.r, 0, 255)),
-              parseInt(clamp(color.g, 0, 255)),
-              parseInt(clamp(color.b, 0, 255)),
-            ] + ')';
-
-            context.fillRect(x, y, 1, 1);
+            pixels[ptr + 0] = parseInt(clamp(color.r, 0, 255));
+            pixels[ptr + 1] = parseInt(clamp(color.g, 0, 255));
+            pixels[ptr + 2] = parseInt(clamp(color.b, 0, 255));
+            pixels[ptr + 0] = 255;
 
           }
         }
+
+        context.putImageData(imgData, 0, 0);
 
       }
 
@@ -424,7 +425,7 @@
       img.addEventListener(
         'load',
         function () {
-          desc.textContent = "光らせたい場所をクリックしてね！処理が重いから注意しろよ！";
+          desc.textContent = "光らせたい場所をクリックしてね！";
           drawBaseImage();
         },
         false
