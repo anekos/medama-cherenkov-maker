@@ -314,7 +314,7 @@
             var w1 = spoke[i] * (1 - t) + spoke[(i + 1) % opt.nspoke] * t;
             w1 = w1 * w1;
 
-            var w = 1.0 / (l + 0.001) * 0.9;
+            var w = 1 / (l + 0.001) * 0.9;
 
             var nova_alpha = clamp(w, 0.0, 1.0);
 
@@ -323,15 +323,13 @@
             var compl_ratio = 1.0 - ratio;
 
             var ptr = (y * width + x) * 4;
-            var color = {};
 
             for (var ci = 0; ci < 3; ci++ ) {
-              var srccol = pixels[ptr + ci];
-              var spokecol = spokecolor[i                   ][ci] * (1.0 - t) +
-                               spokecolor[(i + 1) % opt.nspoke][ci] * t;
+              var srccol = pixels[ptr + ci] / 255;
+              var spokecol = spokecolor[i][ci] * (1.0 - t) + spokecolor[(i + 1) % opt.nspoke][ci] * t;
 
               var outcol = w > 1.0 ? clamp(spokecol * w, 0.0, 1.0) :
-                                     srccol * compl_ratio * spokecol * ratio;
+                                     srccol * compl_ratio + spokecol * ratio;
 
               var c = clamp(w1 * w, 0.0, 1.0);
               outcol += c;
