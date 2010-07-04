@@ -217,37 +217,39 @@
         return Math.random(d) + from;
       }
 
-      var hrtbl = [
-        [0, 3, 1],
-        [2, 0, 1],
-        [1, 0, 3],
-        [1, 2, 0],
-        [3, 1, 0],
-        [0, 1, 2]
-      ];
+      rgb2hsv = (function () {
+        var hrtbl = [
+          [0, 3, 1],
+          [2, 0, 1],
+          [1, 0, 3],
+          [1, 2, 0],
+          [3, 1, 0],
+          [0, 1, 2]
+        ];
 
-      function rgb2hsv (r, g, b) {
-        var v = Math.max(Math.max(r, g), b);
-        var min = Math.min(Math.min(r, g), b);
+        return function (r, g, b) {
+          var v = Math.max(Math.max(r, g), b);
+          var min = Math.min(Math.min(r, g), b);
 
-        if (v == 0)
-          return {h: 0, s: 0, v: 0};
+          if (v == 0)
+            return {h: 0, s: 0, v: 0};
 
-        var s = (v - min) / v;
+          var s = (v - min) / v;
 
-        var rr = (v - r) / (v - min);
-        var gg = (v - g) / (v - min);
-        var bb = (v - b) / (v - min);
+          var rr = (v - r) / (v - min);
+          var gg = (v - g) / (v - min);
+          var bb = (v - b) / (v - min);
 
-        var h = v == r ? bb - gg :
-                v == g ? 2 + rr - bb :
-                         4 + gg - rr;
+          var h = v == r ? bb - gg :
+                  v == g ? 2 + rr - bb :
+                           4 + gg - rr;
 
-        if (h < 0)
-          h += 1;
+          if (h < 0)
+            h += 1;
 
-        return {h: h / 6, s: s, v: v};
-      }
+          return {h: h / 6, s: s, v: v};
+        }:
+      })();
 
       function hsv2rgb (h, s, v) {
         if (s == 0)
@@ -382,6 +384,7 @@
       var canvas = document.getElementById('canvas');
       var img = document.getElementById('pic');
       var context = canvas.getContext('2d');
+      var openAsFile = document.getElementById('openAsFile');
 
       img.addEventListener(
         'load',
@@ -445,24 +448,26 @@
       );
 
 
-      function colorOnChange () {
-        var context = colorview.getContext('2d');
-        context.fillStyle = color.value;
-        context.fillRect(0, 0, 100, 100);
-        var cs = context.getImageData(0, 0, 1, 1).data;
-        rgbdata = [cs[0] / 255, cs[1] / 255, cs[2] / 255];
-        colorvalue.textContent = cs.slice(0, 3);
-      }
+      (function () {
+        function colorOnChange () {
+          var context = colorview.getContext('2d');
+          context.fillStyle = color.value;
+          context.fillRect(0, 0, 100, 100);
+          var cs = context.getImageData(0, 0, 1, 1).data;
+          rgbdata = [cs[0] / 255, cs[1] / 255, cs[2] / 255];
+          colorvalue.textContent = cs.slice(0, 3);
+        }
 
-      color.addEventListener(
-        'change',
-        colorOnChange,
-        true
-      );
+        color.addEventListener(
+          'change',
+          colorOnChange,
+          true
+        );
 
-      colorOnChange();
+        colorOnChange();
+      })();
 
-      document.getElementById('openAsFile').addEventListener(
+      openAsFile.addEventListener(
         'click', 
         function () { window.open(canvas.toDataURL()); },
       true);
