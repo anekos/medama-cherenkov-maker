@@ -246,48 +246,39 @@
           [0, 1, 2]
         ];
 
-        return function (r, g, b) {
-          var v = Math.max(Math.max(r, g), b);
-          var min = Math.min(Math.min(r, g), b);
+        return function (h, s, v) {
+          if (s == 0)
+            return [v, v, v];
 
-          if (v == 0)
-            return {h: 0, s: 0, v: 0};
+          h *= 6;
+          var i = Math.floor(h);
 
-          var d = v - min;
-          var s = d / v;
-          var rr = (v - r) / d,
-          var gg = (v - g) / d,
-          var bb = (v - b) / d,
+          var f = h - i;
+          var rs = [v, v * (1 - s), v * (1 - s * f), v * (1 - s * (1 - f))];
+          var idx = hrtbl[i];
 
-          var h = v == r ? bb - gg :
-                  v == g ? 2 + rr - bb :
-                           4 + gg - rr;
-
-          if (h < 0)
-            h += 1;
-
-          return {h: h / 6, s: s, v: v};
-        }:
+          return [rs[idx[0]], rs[idx[1]], rs[idx[2]]];
+        };
       })();
-
-      function hsv2rgb (h, s, v) {
-        if (s == 0)
-          return [v, v, v];
-
-        h *= 6;
-        var i = Math.floor(h);
-
-        var f = h - i;
-        var rs = [v, v * (1 - s), v * (1 - s * f), v * (1 - s * (1 - f))];
-        var idx = hrtbl[i];
-
-        return [rs[idx[0]], rs[idx[1]], rs[idx[2]]];
-      }
 
       function clamp (v, from, to) {
         return v < from ? from :
                v > to   ? to :
                v;
+      }
+
+      function time (name, func, args, _this) {
+        var a = new Date();
+        var r = args ? func.apply(_this, args) : func();
+        var b = new Date();
+        return [(b.getTime() - a.getTime()) / 1000, r];
+      }
+
+      function logTime (name, func, args, _this) {
+        var rt = time.apply(null, arguments);
+        if (console && typeof console.log === 'function')
+          console.log(name + ": " + rt[0] + "msec");
+        return rt;
       }
 
       /**************************************************************************/
@@ -371,18 +362,22 @@
       }
 
       function superNova (pos) {
-        nova(
-          context,
-          {
-            width: img.width,
-            height: img.height,
-            xcenter: pos.x,
-            ycenter: pos.y,
-            color: rgbdata || [0.35, 0.39, 1.0, 1.0],
-            radius: clampedValue('radius', 0, 100),
-            nspoke: clampedValue('nspoke', 1, 100),
-            randomhue: clampedValue('randomhue', 0, 360),
-          }
+        time(
+          'nova',
+          nova,
+          [
+            context,
+            {
+              width: img.width,
+              height: img.height,
+              xcenter: pos.x,
+              ycenter: pos.y,
+              color: rgbdata || [0.35, 0.39, 1.0, 1.0],
+              radius: clampedValue('radius', 0, 100),
+              nspoke: clampedValue('nspoke', 1, 100),
+              randomhue: clampedValue('randomhue', 0, 360),
+            }
+          ]
         );
       }
 
