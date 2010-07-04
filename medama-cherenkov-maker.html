@@ -189,6 +189,7 @@
 
     <button id="kill">りせっと</button>
     <button id="openAsFile">画像として開く</button>
+    <button id="save">保存する</button>
 
     <hr />
 
@@ -393,6 +394,7 @@
       var img = document.getElementById('pic');
       var context = canvas.getContext('2d');
       var openAsFile = document.getElementById('openAsFile');
+      var save = document.getElementById('save');
 
       img.addEventListener(
         'load',
@@ -481,6 +483,14 @@
         'click', 
         function () {
           window.open(canvas.toDataURL());
+        },
+        true
+      );
+
+      save.addEventListener(
+        'click', 
+        function () {
+          window.open(canvas.toDataURL().replace('image/png', 'application/octet'));
         },
         true
       );
