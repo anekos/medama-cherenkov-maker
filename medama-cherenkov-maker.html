@@ -39,7 +39,7 @@
 
       <div id="dropbox"><img id="pic" style="display: none" /></div>
 
-      色: <select id="color">
+      色(<span id="colorvalue"></span>): <select id="color">
         <option style="background-color: AliceBlue">AliceBlue</option>
         <option style="background-color: AntiqueWhite">AntiqueWhite</option>
         <option style="background-color: Aqua">Aqua</option>
@@ -49,7 +49,7 @@
         <option style="background-color: Bisque">Bisque</option>
         <option style="background-color: Black">Black</option>
         <option style="background-color: BlanchedAlmond">BlanchedAlmond</option>
-        <option style="background-color: Blue">Blue</option>
+        <option style="background-color: Blue" selected=1>Blue</option>
         <option style="background-color: BlueViolet">BlueViolet</option>
         <option style="background-color: Brown">Brown</option>
         <option style="background-color: Burlywood">Burlywood</option>
@@ -415,6 +415,7 @@
 
       var rgbdata;
       var color = document.getElementById("color");
+      var colorvalue = document.getElementById("colorvalue");
       var colorview = document.getElementById("colorview");
       var button = document.getElementById("kill");
       var desc = document.getElementById("desc");
@@ -484,18 +485,23 @@
         true
       );
 
-      color = document.getElementById('color');
+
+      function colorOnChange () {
+        var context = colorview.getContext('2d');
+        context.fillStyle = color.value;
+        context.fillRect(0, 0, 100, 100);
+        var cs = context.getImageData(0, 0, 1, 1).data;
+        rgbdata = [cs[0] / 255, cs[1] / 255, cs[2] / 255];
+        colorvalue.textContent = cs.slice(0, 3);
+      }
+
       color.addEventListener(
         'change',
-        function () {
-          var context = colorview.getContext('2d');
-          context.fillStyle = color.value;
-          context.fillRect(0, 0, 100, 100);
-          var cs = context.getImageData(0, 0, 1, 1).data;
-          rgbdata = [cs[0] / 255, cs[1] / 255, cs[2] / 255];
-        },
+        colorOnChange,
         true
       );
+
+      colorOnChange();
 
       document.getElementById('openAsFile').addEventListener(
         'click', 
