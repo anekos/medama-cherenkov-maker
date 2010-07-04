@@ -208,16 +208,35 @@
         return sum / 6.0;
       }
 
-      function HSV () {
-        return {h: 0, s: 0, v: 0};
-      }
-
       function rangeRand (from, to) {
         var d = to - from;
         return Math.random(d) + from;
       }
 
-      rgb2hsv = (function () {
+      function rgb2hsv (r, g, b) {
+        var v = Math.max(Math.max(r, g), b);
+        var min = Math.min(Math.min(r, g), b);
+
+        if (v == 0)
+          return {h: 0, s: 0, v: 0};
+
+        var d = v - min;
+        var s = d / v;
+        var rr = (v - r) / d;
+        var gg = (v - g) / d;
+        var bb = (v - b) / d;
+
+        var h = v == r ? bb - gg :
+                v == g ? 2 + rr - bb :
+                         4 + gg - rr;
+
+        if (h < 0)
+          h += 1;
+
+        return {h: h / 6, s: s, v: v};
+      }
+
+      var hsv2rgb = (function () {
         var hrtbl = [
           [0, 3, 1],
           [2, 0, 1],
@@ -234,11 +253,11 @@
           if (v == 0)
             return {h: 0, s: 0, v: 0};
 
-          var s = (v - min) / v;
-
-          var rr = (v - r) / (v - min);
-          var gg = (v - g) / (v - min);
-          var bb = (v - b) / (v - min);
+          var d = v - min;
+          var s = d / v;
+          var rr = (v - r) / d,
+          var gg = (v - g) / d,
+          var bb = (v - b) / d,
 
           var h = v == r ? bb - gg :
                   v == g ? 2 + rr - bb :
@@ -285,7 +304,6 @@
         var spokecolor = [];
         var hsv = rgb2hsv.apply(null, opt.color);
 
-
         for (var i = 0; i < opt.nspoke; i++) {
           spoke.push(gauss());
           hsv.h += opt.randomhue /
@@ -314,13 +332,9 @@
             w1 = w1 * w1;
 
             var w = 1 / (l + 0.001) * 0.9;
-
             var nova_alpha = clamp(w, 0.0, 1.0);
-
             var ratio = nova_alpha;
-
             var compl_ratio = 1.0 - ratio;
-
             var ptr = (y * width + x) * 4;
 
             for (var ci = 0; ci < 3; ci++ ) {
@@ -339,7 +353,6 @@
         }
 
         context.putImageData(imgData, 0, 0);
-
       }
 
       function drawBaseImage () {
@@ -397,7 +410,9 @@
 
       button.addEventListener(
         'click',
-        function () {drawBaseImage();},
+        function () {
+          drawBaseImage();
+        },
         true
       );
 
@@ -469,8 +484,11 @@
 
       openAsFile.addEventListener(
         'click', 
-        function () { window.open(canvas.toDataURL()); },
-      true);
+        function () {
+          window.open(canvas.toDataURL());
+        },
+        true
+      );
 
     </script>
 
