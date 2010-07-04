@@ -254,7 +254,7 @@
 
       function hsv2rgb (h, s, v) {
         if (s == 0)
-          return {r: v, g: v, b: v};
+          return [v, v, v];
 
         h *= 6;
         var i = Math.floor(h);
@@ -263,7 +263,7 @@
         var rs = [v, v * (1 - s), v * (1 - s * f), v * (1 - s * (1 - f))];
         var idx = hrtbl[i];
 
-        return {r: rs[idx[0]], g: rs[idx[1]], b: rs[idx[2]]};
+        return [rs[idx[0]], rs[idx[1]], rs[idx[2]]];
       }
 
       function clamp (v, from, to) {
@@ -323,57 +323,21 @@
             var compl_ratio = 1.0 - ratio;
 
             var ptr = (y * width + x) * 4;
-            var srccol = {r: pixels[ptr + 0] / 255, g: pixels[ptr + 1] / 255, b: pixels[ptr + 2] / 255};
-
             var color = {};
 
-            {
-              var spokecol = spokecolor[i                   ].r * (1.0 - t) +
-                               spokecolor[(i + 1) % opt.nspoke].r * t;
+            for (var ci = 0; ci < 3; ci++ ) {
+              var srccol = pixels[ptr + ci];
+              var spokecol = spokecolor[i                   ][ci] * (1.0 - t) +
+                               spokecolor[(i + 1) % opt.nspoke][ci] * t;
 
-              if (w > 1.0)
-                color.r = clamp(spokecol * w, 0.0, 1.0);
-              else
-                color.r  = srccol.r * compl_ratio * spokecol * ratio;
-
-              var c = clamp(w1 * w, 0.0, 1.0);
-              color.r += c;
-              color.r = color.r * 255;
-            }
-
-            {
-              spokecol = spokecolor[i                   ].g * (1.0 - t) +
-                         spokecolor[(i + 1) % opt.nspoke].g * t;
-
-              if (w > 1.0)
-                color.g = clamp(spokecol * w, 0.0, 1.0);
-              else
-                color.g = srccol.g * compl_ratio + spokecol * ratio;
+              var outcol = w > 1.0 ? clamp(spokecol * w, 0.0, 1.0) :
+                                     srccol * compl_ratio * spokecol * ratio;
 
               var c = clamp(w1 * w, 0.0, 1.0);
-              color.g += c;
-              color.g *= 255;
+              outcol += c;
+              outcol *= 255;
+              pixels[ptr + ci] = clamp(parseInt(outcol, 10), 0, 255);
             }
-
-            {
-              spokecol = spokecolor[i                   ].b * (1.0 - t) +
-                         spokecolor[(i + 1) % opt.nspoke].b * t;
-
-              if (w > 1.0)
-                color.b = clamp(spokecol * w, 0.0, 1.0);
-              else
-                color.b = srccol.b * compl_ratio + spokecol * ratio;
-
-              var c = clamp(w1 * w, 0.0, 1.0);
-              color.b += c;
-              color.b *= 255;
-            }
-
-            pixels[ptr + 0] = parseInt(clamp(color.r, 0, 255));
-            pixels[ptr + 1] = parseInt(clamp(color.g, 0, 255));
-            pixels[ptr + 2] = parseInt(clamp(color.b, 0, 255));
-            pixels[ptr + 0] = 255;
-
           }
         }
 
