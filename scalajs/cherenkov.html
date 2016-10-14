@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Medama Cherenkov</title>
+  </head>
+  <body>
+    <script type="text/javascript" src="./target/scala-2.11/medama-cherenkov-opt.js"></script>
+
+    <canvas id="cherenkov" style="border: 2px solid blue"></canvas>
+
+    <div><img id="image" style="display: none;"></div>
+    <input name="image-data" id="image-data" type="hidden">
+
+    <script type="text/javascript">
+      cherenkov.MedamaCherenkov().main();
+    </script>
+  </body>
+</html>
