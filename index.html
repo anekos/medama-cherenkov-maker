@@ -190,6 +190,7 @@
     フレーム数(2 - 10): <input id="framecount" type="number" value="2"> <br/>
 
     <button id="reset">りせっと</button>
+    <button id="redraw">もっかい描画</button>
     <button id="openAsFile">画像として開く</button>
     <button id="save">保存する</button>
     <a id="downloadBtn" href="#" style="display: none;"></a>
@@ -410,6 +411,7 @@
       var colorvalue = document.getElementById("colorvalue");
       var colorview = document.getElementById("colorview");
       var reset = document.getElementById("reset");
+      var redraw = document.getElementById("redraw");
       var desc = document.getElementById("desc");
       var dropbox = document.getElementById("canvas");
       var canvas = document.getElementById('canvas');
@@ -443,6 +445,17 @@
           clickedPosList = [];
 
           drawBaseImage();
+        },
+        true
+      );
+
+      redraw.addEventListener(
+        'click',
+        function () {
+          drawBaseImage();
+          if (clickedPosList.length > 0) {
+            animateSupernova(clickedPosList, context);
+          }
         },
         true
       );
