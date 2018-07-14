@@ -397,6 +397,13 @@
       var openAsFile = document.getElementById('openAsFile');
       var save = document.getElementById('save');
 
+      // ブラウザ判定: https://qiita.com/sakuraya/items/33f93e19438d0694a91d
+      var userAgent = window.navigator.userAgent.toLowerCase();
+      var platform = {
+        isChrome: userAgent.indexOf('chrome') != -1,
+        isFirefox: userAgent.indexOf('firefox') != -1,
+      };
+
       img.addEventListener(
         'load',
         function () {
@@ -482,9 +489,26 @@
 
       openAsFile.addEventListener(
         'click', 
-        function () {
-          window.open(canvas.toDataURL());
-        },
+        (function () {
+          var prevObjectURL;
+
+          return function () {
+            if (platform.isFirefox) {
+              var url = canvas.toDataURL();
+              window.open(url);
+            } else if (platform.isChrome) {
+              canvas.toBlob(function (blob) {
+                if (prevObjectURL) {
+                  URL.revokeObjectURL(prevObjectURL);
+                }
+                prevObjectURL = URL.createObjectURL(blob);
+                window.open(prevObjectURL);
+              });
+            } else {
+              alert('Chrome か Firefox でうごきます');
+            }
+          };
+        })(),
         true
       );
 
