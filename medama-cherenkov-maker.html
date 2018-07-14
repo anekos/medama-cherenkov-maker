@@ -190,6 +190,7 @@
     <button id="kill">りせっと</button>
     <button id="openAsFile">画像として開く</button>
     <button id="save">保存する</button>
+    <a id="downloadBtn" href="#" style="display: none;"></a>
 
     <hr />
 
@@ -490,7 +491,11 @@
       save.addEventListener(
         'click', 
         function () {
-          window.open(canvas.toDataURL().replace('image/png', 'application/octet'));
+          var url = canvas.toDataURL().replace('image/png', 'application/octet');
+          var downloadBtn = document.getElementById('downloadBtn');
+          downloadBtn.href = url;
+          downloadBtn.download = 'bikabika.gif';
+          downloadBtn.click();
         },
         true
       );
