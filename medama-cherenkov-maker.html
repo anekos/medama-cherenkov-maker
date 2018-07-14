@@ -186,8 +186,10 @@
     半径(0 - 100): <input id="radius" type="number" value="20"> <br/>
     放射(0 - 100): <input id="nspoke" type="number" value="100"> <br/>
     乱数色相(0 - 360): <input id="randomhue" type="number" value="0"> <br/>
+    FPS(15 - 60): <input id="fps" type="number" value="15"> <br/>
+    フレーム数(2 - 10): <input id="framecount" type="number" value="2"> <br/>
 
-    <button id="kill">りせっと</button>
+    <button id="reset">りせっと</button>
     <button id="openAsFile">画像として開く</button>
     <button id="save">保存する</button>
     <a id="downloadBtn" href="#" style="display: none;"></a>
@@ -197,7 +199,12 @@
     <p id="desc">ここ↓に画像ファイルをドラッグ＆ドロップしてね。</p>
     <canvas id="canvas" width="150" height="150" style="border: 2px solid blue">
     </canvas>
+    <img id="animated-preview" style='display: none;'>
 
+    <script type="text/javascript" src='lib/jsgif/LZWEncoder.js'></script>
+    <script type="text/javascript" src='lib/jsgif/NeuQuant.js'></script>
+    <script type="text/javascript" src='lib/jsgif/GIFEncoder.js'></script>
+    <script type="text/javascript" src='lib/jsgif/b64.js'></script>
     <script type="text/javascript">
       /**************************************************************************/
 
@@ -363,13 +370,15 @@
         return clamp(parseInt(document.getElementById(id).value, 10), from, to);
       }
 
-      function superNova (pos) {
-        time(
-          'nova',
-          nova,
-          [
-            context,
-            {
+      function generateAniGIFDataURL (posList, ctx) {
+        var encoder = new GIFEncoder();
+        encoder.setRepeat(0); // loop
+        encoder.setDelay(1000 / clampedValue('fps', 15, 60));
+        encoder.start();
+        var frameCount = clampedValue('framecount', 2, 10);
+        for (var i = 0; i < frameCount; i++) {
+          posList.forEach(function (pos) {
+            nova(ctx, {
               width: img.width,
               height: img.height,
               xcenter: pos.x,
@@ -378,17 +387,29 @@
               radius: clampedValue('radius', 0, 100),
               nspoke: clampedValue('nspoke', 1, 100),
               randomhue: clampedValue('randomhue', 0, 360),
-            }
-          ]
-        );
+            });
+          });
+          encoder.addFrame(ctx);
+        }
+        encoder.finish();
+        var binaryGIF = encoder.stream().getData();
+        return 'data:image/gif;base64,'+encode64(binaryGIF);
+      }
+
+      function animateSupernova (posList, ctx) {
+        var dataURL = generateAniGIFDataURL(posList, ctx);
+        var preview = document.getElementById('animated-preview');
+        preview.style.display = 'inline';
+        preview.src = dataURL;
       }
 
 
       var rgbdata;
+      var clickedPosList = [];
       var color = document.getElementById("color");
       var colorvalue = document.getElementById("colorvalue");
       var colorview = document.getElementById("colorview");
-      var button = document.getElementById("kill");
+      var reset = document.getElementById("reset");
       var desc = document.getElementById("desc");
       var dropbox = document.getElementById("canvas");
       var canvas = document.getElementById('canvas');
@@ -413,9 +434,14 @@
         false
       );
 
-      button.addEventListener(
+      reset.addEventListener(
         'click',
         function () {
+          var preview = document.getElementById('animated-preview');
+          preview.style.display = 'none';
+
+          clickedPosList = [];
+
           drawBaseImage();
         },
         true
@@ -449,6 +475,7 @@
           var reader = new FileReader();
           reader.onloadend = function () {
             img.src = reader.result;
+            reset.click();
           };
           reader.readAsDataURL(file);
         },
@@ -459,10 +486,12 @@
         'click',
         function (e) {
           desc.textContent = "光らせた画像は、右クリックメニューから保存できるよ！";
-          superNova({
+          clickedPosList.push({
             x: e.pageX - e.target.offsetLeft - 2,
             y: e.pageY - e.target.offsetTop - 2,
-          })
+          });
+          drawBaseImage();
+          animateSupernova(clickedPosList, context);
         },
         true
       );
