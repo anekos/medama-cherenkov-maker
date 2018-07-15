@@ -356,12 +356,12 @@
         context.putImageData(imgData, 0, 0);
       }
 
-      function drawBaseImage () {
+      function setCanvasWidthHeight () {
         canvas.width = img.width;
         canvas.height = img.height;
+      }
 
-        context = canvas.getContext('2d');
-
+      function drawBaseImage (context) {
         context.fillStyle = "rgb(255, 255, 255)";
         context.fillRect (0, 0, 150, 150);
         context.drawImage(img, 0, 0);
@@ -371,34 +371,62 @@
         return clamp(parseInt(document.getElementById(id).value, 10), from, to);
       }
 
-      function generateAniGIFDataURL (posList, ctx) {
+      function generateAniGIFDataURL (posList) {
+        function createContext() {
+          var c = document.createElement('canvas');
+          c.width = canvas.width;
+          c.height = canvas.height;
+          return c.getContext('2d');
+        }
+
+        var context = createContext();
         var encoder = new GIFEncoder();
         encoder.setRepeat(0); // loop
         encoder.setDelay(1000 / clampedValue('fps', 15, 60));
         encoder.start();
         var frameCount = clampedValue('framecount', 2, 10);
-        for (var i = 0; i < frameCount; i++) {
-          posList.forEach(function (pos) {
-            nova(ctx, {
-              width: img.width,
-              height: img.height,
-              xcenter: pos.x,
-              ycenter: pos.y,
-              color: rgbdata || [0.35, 0.39, 1.0, 1.0],
-              radius: clampedValue('radius', 0, 100),
-              nspoke: clampedValue('nspoke', 1, 100),
-              randomhue: clampedValue('randomhue', 0, 360),
+        if (posList.length > 0) {
+          for (var i = 0; i < frameCount; i++) {
+            drawBaseImage(context);
+            posList.forEach(function (pos) {
+              nova(context, {
+                width: img.width,
+                height: img.height,
+                xcenter: pos.x,
+                ycenter: pos.y,
+                color: rgbdata || [0.35, 0.39, 1.0, 1.0],
+                radius: clampedValue('radius', 0, 100),
+                nspoke: clampedValue('nspoke', 1, 100),
+                randomhue: clampedValue('randomhue', 0, 360),
+              });
             });
-          });
-          encoder.addFrame(ctx);
+            encoder.addFrame(context);
+          }
         }
         encoder.finish();
         var binaryGIF = encoder.stream().getData();
         return 'data:image/gif;base64,'+encode64(binaryGIF);
       }
 
-      function animateSupernova (posList, ctx) {
-        var dataURL = generateAniGIFDataURL(posList, ctx);
+      // 静止画 canvas を更新
+      function canvasSupernova (posList) {
+        posList.forEach(function (pos) {
+          nova(context, {
+            width: img.width,
+            height: img.height,
+            xcenter: pos.x,
+            ycenter: pos.y,
+            color: rgbdata || [0.35, 0.39, 1.0, 1.0],
+            radius: clampedValue('radius', 0, 100),
+            nspoke: clampedValue('nspoke', 1, 100),
+            randomhue: clampedValue('randomhue', 0, 360),
+          });
+        });
+      }
+
+      // アニメ GIF の img 要素を更新
+      function animateSupernova (posList) {
+        var dataURL = generateAniGIFDataURL(posList);
         var preview = document.getElementById('animated-preview');
         preview.style.display = 'inline';
         preview.src = dataURL;
@@ -431,7 +459,8 @@
         'load',
         function () {
           desc.textContent = "光らせたい場所をクリックしてね！";
-          drawBaseImage();
+          setCanvasWidthHeight();
+          drawBaseImage(context);
         },
         false
       );
@@ -444,7 +473,8 @@
 
           clickedPosList = [];
 
-          drawBaseImage();
+          setCanvasWidthHeight();
+          drawBaseImage(context);
         },
         true
       );
@@ -452,9 +482,11 @@
       redraw.addEventListener(
         'click',
         function () {
-          drawBaseImage();
+          setCanvasWidthHeight();
+          drawBaseImage(context);
+          canvasSupernova(clickedPosList);
           if (clickedPosList.length > 0) {
-            animateSupernova(clickedPosList, context);
+            animateSupernova(clickedPosList);
           }
         },
         true
@@ -503,8 +535,10 @@
             x: e.pageX - e.target.offsetLeft - 2,
             y: e.pageY - e.target.offsetTop - 2,
           });
-          drawBaseImage();
-          animateSupernova(clickedPosList, context);
+          setCanvasWidthHeight();
+          drawBaseImage(context);
+          canvasSupernova(clickedPosList);
+          animateSupernova(clickedPosList);
         },
         true
       );
