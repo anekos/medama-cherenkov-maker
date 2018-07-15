@@ -274,20 +274,6 @@
                v;
       }
 
-      function time (name, func, args, _this) {
-        var a = new Date();
-        var r = args ? func.apply(_this, args) : func();
-        var b = new Date();
-        return [(b.getTime() - a.getTime()) / 1000, r];
-      }
-
-      function logTime (name, func, args, _this) {
-        var rt = time.apply(null, arguments);
-        if (console && typeof console.log === 'function')
-          console.log(name + ": " + rt[0] + "msec");
-        return rt;
-      }
-
       /**************************************************************************/
 
       function nova (context, opt) {
