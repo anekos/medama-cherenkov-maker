@@ -30,11 +30,10 @@
 <html lang="ja">
   <head>
     <title>Medama Cherenkov Maker</title>
-    <link rel="stylesheet" href="./style.css" type="text/css">
     <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
   </head>
   <body>
-    <p><em> Firefox 以外ではうごかないかもー </em></p>
+    <p><em> Chrome,Firefox 以外ではうごかないかもー </em></p>
 
     <div id="dropbox"><img id="pic" style="display: none" /></div>
 
@@ -183,20 +182,26 @@
 
     <canvas id="colorview" style="width: 30px; height: 30px; display: none">&nbsp;&nbsp;</canvas> <br/>
 
-    半径(0 - 100): <input id="radius" type="text" value="20"> <br/>
-    放射(0 - 100): <input id="nspoke" type="text" value="100"> <br/>
-    乱数色相(0 - 360): <input id="randomhue" type="text" value="0"> <br/>
+    半径(0 - 100): <input id="radius" type="number" value="20"> <br/>
+    放射(0 - 100): <input id="nspoke" type="number" value="100"> <br/>
+    乱数色相(0 - 360): <input id="randomhue" type="number" value="0"> <br/>
+    FPS(15 - 60): <input id="fps" type="number" value="15"> <br/>
+    フレーム数(2 - 10): <input id="framecount" type="number" value="2"> <br/>
 
-    <button id="kill">りせっと</button>
-    <button id="openAsFile">画像として開く</button>
-    <button id="save">保存する</button>
+    <button id="reset">りせっと</button>
+    <button id="redraw">もっかい描画</button>
 
     <hr />
 
     <p id="desc">ここ↓に画像ファイルをドラッグ＆ドロップしてね。</p>
     <canvas id="canvas" width="150" height="150" style="border: 2px solid blue">
     </canvas>
+    <img id="animated-preview" style='display: none;'>
 
+    <script type="text/javascript" src='lib/jsgif/LZWEncoder.js'></script>
+    <script type="text/javascript" src='lib/jsgif/NeuQuant.js'></script>
+    <script type="text/javascript" src='lib/jsgif/GIFEncoder.js'></script>
+    <script type="text/javascript" src='lib/jsgif/b64.js'></script>
     <script type="text/javascript">
       /**************************************************************************/
 
@@ -268,20 +273,6 @@
                v;
       }
 
-      function time (name, func, args, _this) {
-        var a = new Date();
-        var r = args ? func.apply(_this, args) : func();
-        var b = new Date();
-        return [(b.getTime() - a.getTime()) / 1000, r];
-      }
-
-      function logTime (name, func, args, _this) {
-        var rt = time.apply(null, arguments);
-        if (console && typeof console.log === 'function')
-          console.log(name + ": " + rt[0] + "msec");
-        return rt;
-      }
-
       /**************************************************************************/
 
       function nova (context, opt) {
@@ -347,12 +338,12 @@
         context.putImageData(imgData, 0, 0);
       }
 
-      function drawBaseImage () {
+      function setCanvasWidthHeight () {
         canvas.width = img.width;
         canvas.height = img.height;
+      }
 
-        context = canvas.getContext('2d');
-
+      function drawBaseImage (context) {
         context.fillStyle = "rgb(255, 255, 255)";
         context.fillRect (0, 0, 150, 150);
         context.drawImage(img, 0, 0);
@@ -362,53 +353,105 @@
         return clamp(parseInt(document.getElementById(id).value, 10), from, to);
       }
 
-      function superNova (pos) {
-        time(
-          'nova',
-          nova,
-          [
-            context,
-            {
-              width: img.width,
-              height: img.height,
-              xcenter: pos.x,
-              ycenter: pos.y,
-              color: rgbdata || [0.35, 0.39, 1.0, 1.0],
-              radius: clampedValue('radius', 0, 100),
-              nspoke: clampedValue('nspoke', 1, 100),
-              randomhue: clampedValue('randomhue', 0, 360),
-            }
-          ]
-        );
+      function generateAniGIFDataURL (posList) {
+        function createContext() {
+          var c = document.createElement('canvas');
+          c.width = canvas.width;
+          c.height = canvas.height;
+          return c.getContext('2d');
+        }
+
+        var context = createContext();
+        var encoder = new GIFEncoder();
+        encoder.setRepeat(0); // loop
+        encoder.setDelay(1000 / clampedValue('fps', 15, 60));
+        encoder.start();
+        var frameCount = clampedValue('framecount', 2, 10);
+        if (posList.length > 0) {
+          for (var i = 0; i < frameCount; i++) {
+            drawBaseImage(context);
+            superNova(context, posList);
+            encoder.addFrame(context);
+          }
+        }
+        encoder.finish();
+        var binaryGIF = encoder.stream().getData();
+        return 'data:image/gif;base64,'+encode64(binaryGIF);
+      }
+
+      function superNova (context, posList) {
+        posList.forEach(function (pos) {
+          nova(context, {
+            width: img.width,
+            height: img.height,
+            xcenter: pos.x,
+            ycenter: pos.y,
+            color: rgbdata || [0.35, 0.39, 1.0, 1.0],
+            radius: clampedValue('radius', 0, 100),
+            nspoke: clampedValue('nspoke', 1, 100),
+            randomhue: clampedValue('randomhue', 0, 360),
+          });
+        });
+      }
+
+      function animateSuperNova (posList) {
+        var dataURL = generateAniGIFDataURL(posList);
+        var preview = document.getElementById('animated-preview');
+        preview.style.display = 'inline';
+        preview.src = dataURL;
       }
 
 
       var rgbdata;
+      var clickedPosList = [];
       var color = document.getElementById("color");
       var colorvalue = document.getElementById("colorvalue");
       var colorview = document.getElementById("colorview");
-      var button = document.getElementById("kill");
+      var reset = document.getElementById("reset");
+      var redraw = document.getElementById("redraw");
       var desc = document.getElementById("desc");
       var dropbox = document.getElementById("canvas");
       var canvas = document.getElementById('canvas');
       var img = document.getElementById('pic');
       var context = canvas.getContext('2d');
-      var openAsFile = document.getElementById('openAsFile');
-      var save = document.getElementById('save');
 
       img.addEventListener(
         'load',
         function () {
           desc.textContent = "光らせたい場所をクリックしてね！";
-          drawBaseImage();
+          setCanvasWidthHeight();
+          drawBaseImage(context);
         },
         false
       );
 
-      button.addEventListener(
+      reset.addEventListener(
         'click',
         function () {
-          drawBaseImage();
+          var preview = document.getElementById('animated-preview');
+          preview.style.display = 'none';
+
+          clickedPosList = [];
+
+          if (img.src) {
+            setCanvasWidthHeight();
+            drawBaseImage(context);
+          }
+        },
+        true
+      );
+
+      redraw.addEventListener(
+        'click',
+        function () {
+          setCanvasWidthHeight();
+          drawBaseImage(context);
+          // 静止画 canvas を更新
+          superNova(context, clickedPosList);
+          // アニメ GIF の img 要素を更新
+          if (clickedPosList.length > 0) {
+            animateSuperNova(clickedPosList);
+          }
         },
         true
       );
@@ -441,6 +484,7 @@
           var reader = new FileReader();
           reader.onloadend = function () {
             img.src = reader.result;
+            reset.click();
           };
           reader.readAsDataURL(file);
         },
@@ -451,10 +495,16 @@
         'click',
         function (e) {
           desc.textContent = "光らせた画像は、右クリックメニューから保存できるよ！";
-          superNova({
+          clickedPosList.push({
             x: e.pageX - e.target.offsetLeft - 2,
             y: e.pageY - e.target.offsetTop - 2,
-          })
+          });
+          setCanvasWidthHeight();
+          drawBaseImage(context);
+          // 静止画 canvas を更新
+          superNova(context, clickedPosList);
+          // アニメ GIF の img 要素を更新
+          animateSuperNova(clickedPosList);
         },
         true
       );
@@ -478,22 +528,6 @@
 
         colorOnChange();
       })();
-
-      openAsFile.addEventListener(
-        'click', 
-        function () {
-          window.open(canvas.toDataURL());
-        },
-        true
-      );
-
-      save.addEventListener(
-        'click', 
-        function () {
-          window.open(canvas.toDataURL().replace('image/png', 'application/octet'));
-        },
-        true
-      );
 
     </script>
 
