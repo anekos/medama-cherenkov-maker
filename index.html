@@ -460,8 +460,10 @@
 
           clickedPosList = [];
 
-          setCanvasWidthHeight();
-          drawBaseImage(context);
+          if (img.src) {
+            setCanvasWidthHeight();
+            drawBaseImage(context);
+          }
         },
         true
       );
