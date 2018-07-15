@@ -37,7 +37,8 @@
 
     <div id="dropbox"><img id="pic" style="display: none" /></div>
 
-    色 Color (<span id="colorvalue"></span>): <select id="color">
+    色 / Color (<span id="colorvalue"></span>): <select id="color">
+      <option style="">Random</option>
       <option style="background-color: AliceBlue">AliceBlue</option>
       <option style="background-color: AntiqueWhite">AntiqueWhite</option>
       <option style="background-color: Aqua">Aqua</option>
@@ -387,6 +388,10 @@
         return 'data:image/gif;base64,'+encode64(binaryGIF);
       }
 
+      function getRandomColor() {
+        return [Math.random(), Math.random(), Math.random(), 1.0];
+      }
+
       function superNova (context, posList) {
         posList.forEach(function (pos) {
           nova(context, {
@@ -394,7 +399,7 @@
             height: img.height,
             xcenter: pos.x,
             ycenter: pos.y,
-            color: rgbdata || [0.35, 0.39, 1.0, 1.0],
+            color: rgbdata || getRandomColor(),
             radius: clampedValue('radius', 0, 100),
             nspoke: clampedValue('nspoke', 1, 100),
             randomhue: clampedValue('randomhue', 0, 360),
@@ -520,11 +525,16 @@
 
       (function () {
         function colorOnChange () {
-          var context = colorview.getContext('2d');
-          context.fillStyle = color.value;
-          context.fillRect(0, 0, 100, 100);
-          var cs = context.getImageData(0, 0, 1, 1).data;
-          rgbdata = [cs[0] / 255, cs[1] / 255, cs[2] / 255];
+          if (color.value == 'Random') {
+            rgbdata = null;
+            colorvalue.textContent = 'Random';
+          } else {
+            var context = colorview.getContext('2d');
+            context.fillStyle = color.value;
+            context.fillRect(0, 0, 100, 100);
+            var cs = context.getImageData(0, 0, 1, 1).data;
+            rgbdata = [cs[0] / 255, cs[1] / 255, cs[2] / 255];
+          }
           colorvalue.textContent = cs.slice(0, 3);
         }
 
