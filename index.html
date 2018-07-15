@@ -371,7 +371,7 @@
         if (posList.length > 0) {
           for (var i = 0; i < frameCount; i++) {
             drawBaseImage(context);
-            supernova(context, posList);
+            superNova(context, posList);
             encoder.addFrame(context);
           }
         }
@@ -380,7 +380,7 @@
         return 'data:image/gif;base64,'+encode64(binaryGIF);
       }
 
-      function supernova (context, posList) {
+      function superNova (context, posList) {
         posList.forEach(function (pos) {
           nova(context, {
             width: img.width,
@@ -395,7 +395,7 @@
         });
       }
 
-      function animateSupernova (posList) {
+      function animateSuperNova (posList) {
         var dataURL = generateAniGIFDataURL(posList);
         var preview = document.getElementById('animated-preview');
         preview.style.display = 'inline';
@@ -448,10 +448,10 @@
           setCanvasWidthHeight();
           drawBaseImage(context);
           // 静止画 canvas を更新
-          supernova(context, clickedPosList);
+          superNova(context, clickedPosList);
           // アニメ GIF の img 要素を更新
           if (clickedPosList.length > 0) {
-            animateSupernova(clickedPosList);
+            animateSuperNova(clickedPosList);
           }
         },
         true
@@ -503,9 +503,9 @@
           setCanvasWidthHeight();
           drawBaseImage(context);
           // 静止画 canvas を更新
-          supernova(context, clickedPosList);
+          superNova(context, clickedPosList);
           // アニメ GIF の img 要素を更新
-          animateSupernova(clickedPosList);
+          animateSuperNova(clickedPosList);
         },
         true
       );
