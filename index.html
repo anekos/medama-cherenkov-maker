@@ -197,7 +197,10 @@
     <p id="desc">ここ↓に画像ファイルをドラッグ＆ドロップしてね。 / Drop a image file↓</p>
     <canvas id="canvas" width="150" height="150" style="border: 2px solid blue">
     </canvas>
+    <br/>
     <img id="animated-preview" style='display: none;'>
+
+    <input type="file" id="file-selector" onchange="loadFile(this.files[0])">
 
     <hr />
 
@@ -414,6 +417,15 @@
         preview.src = dataURL;
       }
 
+      function loadFile (file) {
+          var reader = new FileReader();
+          reader.onloadend = function () {
+            img.src = reader.result;
+            reset.click();
+          };
+          reader.readAsDataURL(file);
+      }
+
 
       var rgbdata;
       var clickedPosList = [];
@@ -492,14 +504,7 @@
         function (e) {
           e.stopPropagation();
           e.preventDefault();
-
-          var file = e.dataTransfer.files[0];
-          var reader = new FileReader();
-          reader.onloadend = function () {
-            img.src = reader.result;
-            reset.click();
-          };
-          reader.readAsDataURL(file);
+          loadFile(e.dataTransfer.files[0]);
         },
         false
       );
