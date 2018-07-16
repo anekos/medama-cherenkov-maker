@@ -453,15 +453,16 @@
       reset.addEventListener(
         'click',
         function () {
+          if (!img.src) {
+            return;
+          }
           var preview = document.getElementById('animated-preview');
           preview.style.display = 'none';
 
           clickedPosList = [];
 
-          if (img.src) {
-            setCanvasWidthHeight();
-            drawBaseImage(context);
-          }
+          setCanvasWidthHeight();
+          drawBaseImage(context);
         },
         true
       );
@@ -469,6 +470,9 @@
       redraw.addEventListener(
         'click',
         function () {
+          if (!img.src) {
+            return;
+          }
           setCanvasWidthHeight();
           drawBaseImage(context);
           // 静止画 canvas を更新
@@ -512,6 +516,9 @@
       canvas.addEventListener(
         'click',
         function (e) {
+          if (!img.src) {
+            return;
+          }
           desc.textContent = "光らせた画像は、右クリックメニューから保存できるよ！";
           clickedPosList.push({
             x: e.pageX - e.target.offsetLeft - 2,
