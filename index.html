@@ -46,7 +46,7 @@
   <body>
     <p><em> Chrome,Firefox 以外ではうごかないかもー </em></p>
 
-    <div id="dropbox"><img id="pic" style="display: none" /></div>
+    <div id="dropbox"><img id="pic" style="display: none" crossorigin/></div>
 
     色 / Color (<span id="colorvalue"></span>): <select id="color">
       <option style="">Random</option>
@@ -547,6 +547,16 @@
         true
       );
 
+      (function () {
+        var params = {};
+        location.search.slice(1).split('&').forEach(function (it) {
+          var parts = it.split('=');
+          params[parts[0]] = parts[1];
+        });
+
+        if (params.image)
+          img.src = decodeURIComponent(params.image);
+      })();
 
       (function () {
         function colorOnChange () {
