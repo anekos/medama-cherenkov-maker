@@ -217,6 +217,19 @@
     <img id="animated-preview" style='display: none;'>
 
     <input type="file" id="file-selector" onchange="loadFile(this.files[0])">
+    <br/>
+    画像縮小 / Image scaling: <select id="scaling">
+      <option value="1.0" selected>100%</option>
+      <option value="0.9">90%</option>
+      <option value="0.8">80%</option>
+      <option value="0.7">70%</option>
+      <option value="0.6">60%</option>
+      <option value="0.5">50%</option>
+      <option value="0.4">40%</option>
+      <option value="0.3">30%</option>
+      <option value="0.2">20%</option>
+      <option value="0.1">10%</option>
+    </select>
 
     <br><br>
     <span>リアルのカード作れるよ→<a href="https://gifpop.io">gifpop!</a></span>
@@ -369,14 +382,14 @@
       }
 
       function setCanvasWidthHeight () {
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
       }
 
       function drawBaseImage (context) {
         context.fillStyle = "rgb(255, 255, 255)";
         context.fillRect (0, 0, 150, 150);
-        context.drawImage(img, 0, 0);
+        context.drawImage(img, 0, 0, img.width * scale, img.height * scale);
       }
 
       function clampedValue (id, from, to) {
@@ -456,7 +469,9 @@
       var dropbox = document.getElementById("canvas");
       var canvas = document.getElementById('canvas');
       var img = document.getElementById('pic');
+      var scaling = document.getElementById('scaling');
       var context = canvas.getContext('2d');
+      var scale = 1.0;
 
       img.addEventListener(
         'load',
@@ -464,6 +479,20 @@
           desc.textContent = "光らせたい場所をクリックしてね！";
           setCanvasWidthHeight();
           drawBaseImage(context);
+        },
+        false
+      );
+
+      scaling.addEventListener(
+        'change',
+        function () {
+          var oldScale = scale;
+          scale = parseFloat(scaling.value);
+          for (var i in clickedPosList) {
+            clickedPosList[i].x = clickedPosList[i].x / oldScale * scale;
+            clickedPosList[i].y = clickedPosList[i].y / oldScale * scale;
+          }
+          redraw.click();
         },
         false
       );
