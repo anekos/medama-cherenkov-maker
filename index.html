@@ -388,7 +388,7 @@
 
       function drawBaseImage (context) {
         context.fillStyle = "rgb(255, 255, 255)";
-        context.fillRect (0, 0, 150, 150);
+        context.fillRect (0, 0, img.width * scale, img.height * scale);
         context.drawImage(img, 0, 0, img.width * scale, img.height * scale);
       }
 
