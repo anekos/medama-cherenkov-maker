@@ -1,0 +1,3 @@
+[submodule "lib/wiv"]
+	path = lib/wiv
+	url = https://github.com/jjkaufman/wiv.js.git
