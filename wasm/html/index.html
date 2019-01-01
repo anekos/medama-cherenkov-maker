@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title></title>
+</head>
+<body>
+  <div id="dropbox"><img id="pic" style="display: none" crossorigin/></div>
+  <canvas id="screen" width="500px" height="500px" style="border: black 1px solid"></canvas>
+  <input type="file" id="file-selector" onchange="loadFile(this.files[0])">
+
+  <script>
+    console.log('start');
+
+    let img = document.getElementById('pic');
+
+    function drawBaseImage (context) {
+      context.fillStyle = 'red';
+      let scale = 1.0;
+      context.fillRect (0, 0, img.width * scale, img.height * scale);
+      context.drawImage(img, 0, 0, img.width * scale, img.height * scale);
+    }
+
+    img.addEventListener(
+      'load',
+      function () {
+        var canvas = document.getElementById('screen');
+        let context = canvas.getContext('2d');
+        drawBaseImage(context);
+        start();
+      },
+      false
+    );
+
+    function loadFile (file) {
+        var reader = new FileReader();
+        reader.onloadend = function () {
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function start() {
+      fetch("t1.wasm").then(response =>
+        response.arrayBuffer()
+      ).then(bytes => WebAssembly.instantiate(
+          bytes,
+          {
+            env: {
+              atan2: (x, y) => Math.atan2(x, y),
+              phase: x => console.log(x),
+              rand: Math.random,
+            }
+          }
+        )
+      ).then(results => {
+        try {
+          let module = {};
+          let mod = results.instance;
+          module.alloc   = mod.exports.alloc;
+          module.dealloc = mod.exports.dealloc;
+          module.fill    = mod.exports.fill;
+
+          var width  = 500;
+          var height = 500;
+
+          var canvas = document.getElementById('screen');
+          var ctx = canvas.getContext('2d');
+
+          let byteSize = width * height * 4;
+          var pointer = module.alloc( byteSize );
+
+          var usub = new Uint8ClampedArray(mod.exports.memory.buffer, pointer, byteSize);
+          var img = new ImageData(usub, width, height);
+
+          var currentImage = ctx.getImageData(0, 0, width, height);
+          usub.set(currentImage.data);
+
+          module.fill(pointer, width, height);
+          ctx.putImageData(img, 0, 0)
+          console.log('fin');
+        } catch (e) {
+          console.log(e);
+        }
+      }, console.log);
+    }
+  </script>
+</body>
+</html>
