@@ -423,380 +423,312 @@
     <script type="text/javascript">
       /**************************************************************************/
 
-      function gauss () {
-        var sum = 0.0;
-
-        for (var i = 0; i < 6; i++)
-          sum += Math.random();
-
-        return sum / 6.0;
-      }
-
-      function rangeRand (from, to) {
-        var d = to - from;
-        return Math.random(d) + from;
-      }
-
-      function rgb2hsv (r, g, b) {
-        var v = Math.max(Math.max(r, g), b);
-        var min = Math.min(Math.min(r, g), b);
-
-        if (v == 0)
-          return {h: 0, s: 0, v: 0};
-
-        var d = v - min;
-        var s = d / v;
-        var rr = (v - r) / d;
-        var gg = (v - g) / d;
-        var bb = (v - b) / d;
-
-        var h = v == r ? bb - gg :
-                v == g ? 2 + rr - bb :
-                         4 + gg - rr;
-
-        if (h < 0)
-          h += 1;
-
-        return {h: h / 6, s: s, v: v};
-      }
-
-      var hsv2rgb = (function () {
-        var hrtbl = [
-          [0, 3, 1],
-          [2, 0, 1],
-          [1, 0, 3],
-          [1, 2, 0],
-          [3, 1, 0],
-          [0, 1, 2]
-        ];
-
-        return function (h, s, v) {
-          if (s == 0)
-            return [v, v, v];
-
-          h *= 6;
-          var i = Math.floor(h);
-
-          var f = h - i;
-          var rs = [v, v * (1 - s), v * (1 - s * f), v * (1 - s * (1 - f))];
-          var idx = hrtbl[i];
-
-          return [rs[idx[0]], rs[idx[1]], rs[idx[2]]];
-        };
-      })();
-
-      function clamp (v, from, to) {
-        return v < from ? from :
-               v > to   ? to :
-               v;
-      }
-
-      /**************************************************************************/
-
-      function nova (context, opt) {
-        var width = opt.width, height = opt.height;
-        var xc = opt.xcenter, yc = opt.ycenter;
-        var x1 = 0, y1 = 0, x2 = width, y2 = height;
-
-        var imgData = context.getImageData(0, 0, width, height);
-        var pixels = imgData.data;
-
-        var spoke = [];
-        var spokecolor = [];
-        var hsv = rgb2hsv.apply(null, opt.color);
-
-        for (var i = 0; i < opt.nspoke; i++) {
-          spoke.push(gauss());
-          hsv.h += opt.randomhue /
-                    360.0 * rangeRand(-0.5, 0.5);
-
-          if (hsv.h < 0)
-            hsv.h += 1.0;
-          else if (hsv.h >= 1.0)
-            hsv.h -= 1.0;
-
-          spokecolor.push(hsv2rgb(hsv.h, hsv.s, hsv.v));
-        }
-
-        for (var row = 0, y = 0; row < y2; row++, y++) {
-          for (var col = 0, x = 0; col < x2; col++, x++) {
-            var u = (x - xc) / opt.radius;
-            var v = (y - yc) / opt.radius;
-            var l = Math.sqrt(u * u + v * v);
-
-            var t = (Math.atan2(u, v) / (2 * Math.PI) + 0.51) * opt.nspoke;
-            var i = Math.floor(t);
-            t -= i;
-            i %= opt.nspoke;
-
-            var w1 = spoke[i] * (1 - t) + spoke[(i + 1) % opt.nspoke] * t;
-            w1 = w1 * w1;
-
-            var w = 1 / (l + 0.001) * 0.9;
-            var nova_alpha = clamp(w, 0.0, 1.0);
-            var ratio = nova_alpha;
-            var compl_ratio = 1.0 - ratio;
-            var ptr = (y * width + x) * 4;
-
-            for (var ci = 0; ci < 3; ci++ ) {
-              var srccol = pixels[ptr + ci] / 255;
-              var spokecol = spokecolor[i][ci] * (1.0 - t) + spokecolor[(i + 1) % opt.nspoke][ci] * t;
-
-              var outcol = w > 1.0 ? clamp(spokecol * w, 0.0, 1.0) :
-                                     srccol * compl_ratio + spokecol * ratio;
-
-              var c = clamp(w1 * w, 0.0, 1.0);
-              outcol += c;
-              outcol *= 255;
-              pixels[ptr + ci] = clamp(parseInt(outcol, 10), 0, 255);
+      async function initialize() {
+        let wasm = await fetch('cherenkov.wasm');
+        let instance = (await WebAssembly.instantiate(
+          await wasm.arrayBuffer(),
+          {
+            env: {
+              atan2: (x, y) => Math.atan2(x, y),
+              rand: Math.random,
             }
           }
-        }
+        )).instance;
 
-        context.putImageData(imgData, 0, 0);
-      }
+        let module = {};
+        module.alloc   = instance.exports.alloc;
+        module.dealloc = instance.exports.dealloc;
+        module.fill    = instance.exports.fill;
 
-      function setCanvasWidthHeight () {
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-      }
+        async function nova (context, opt) {
+          try {
+            let width  = canvas.width;
+            let height = canvas.height;
 
-      function drawBaseImage (context) {
-        context.fillStyle = background.value;
-        context.fillRect (0, 0, img.width * scale, img.height * scale);
-        context.drawImage(img, 0, 0, img.width * scale, img.height * scale);
-      }
+            let byteSize = width * height * 4;
+            let pointer = module.alloc(byteSize);
 
-      function clampedValue (id, from, to) {
-        return clamp(parseInt(document.getElementById(id).value, 10), from, to);
-      }
+            let usub = new Uint8ClampedArray(instance.exports.memory.buffer, pointer, byteSize);
+            let img = new ImageData(usub, width, height);
 
-      function generateAniGIFDataURL (posList) {
-        function createContext() {
-          var c = document.createElement('canvas');
-          c.width = canvas.width;
-          c.height = canvas.height;
-          return c.getContext('2d');
-        }
+            let currentImage = context.getImageData(0, 0, width, height);
+            usub.set(currentImage.data);
 
-        var context = createContext();
-        var encoder = new GIFEncoder();
-        encoder.setRepeat(0); // loop
-        encoder.setDelay(1000 / clampedValue('fps', 15, 60));
-        encoder.start();
-        var frameCount = clampedValue('framecount', 2, 10);
-        if (posList.length > 0) {
-          for (var i = 0; i < frameCount; i++) {
-            drawBaseImage(context);
-            superNova(context, posList);
-            encoder.addFrame(context);
+            module.fill(
+              pointer,
+              width,
+              height,
+              opt.xcenter / width,
+              opt.ycenter / height,
+              opt.color[0],
+              opt.color[1],
+              opt.color[2],
+              opt.nspoke,
+              opt.radius / 100,
+              opt.randomhue / 360,
+            );
+            context.putImageData(img, 0, 0)
+
+            console.log('fin');
+          } catch (e) {
+            console.log(e);
           }
         }
-        encoder.finish();
-        var binaryGIF = encoder.stream().getData();
-        return 'data:image/gif;base64,'+encode64(binaryGIF);
-      }
 
-      function getRandomColor() {
-        return [Math.random(), Math.random(), Math.random(), 1.0];
-      }
+        function setCanvasWidthHeight () {
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+        }
 
-      function superNova (context, posList) {
-        posList.forEach(function (pos) {
-          nova(context, {
-            width: img.width,
-            height: img.height,
-            xcenter: pos.x,
-            ycenter: pos.y,
-            color: rgbdata || getRandomColor(),
-            radius: clampedValue('radius', 0, 100),
-            nspoke: clampedValue('nspoke', 1, 100),
-            randomhue: clampedValue('randomhue', 0, 360),
+        function drawBaseImage (context) {
+          context.fillStyle = background.value;
+          context.fillRect (0, 0, img.width * scale, img.height * scale);
+          context.drawImage(img, 0, 0, img.width * scale, img.height * scale);
+        }
+
+        function clamp (v, from, to) {
+          return v < from ? from :
+                 v > to   ? to :
+                 v;
+        }
+
+        function clampedValue (id, from, to) {
+          return clamp(parseInt(document.getElementById(id).value, 10), from, to);
+        }
+
+        function generateAniGIFDataURL (posList) {
+          function createContext() {
+            var c = document.createElement('canvas');
+            c.width = canvas.width;
+            c.height = canvas.height;
+            return c.getContext('2d');
+          }
+
+          var context = createContext();
+          var encoder = new GIFEncoder();
+          encoder.setRepeat(0); // loop
+          encoder.setDelay(1000 / clampedValue('fps', 15, 60));
+          encoder.start();
+          var frameCount = clampedValue('framecount', 2, 10);
+          if (posList.length > 0) {
+            for (var i = 0; i < frameCount; i++) {
+              drawBaseImage(context);
+              superNova(context, posList);
+              encoder.addFrame(context);
+            }
+          }
+          encoder.finish();
+          var binaryGIF = encoder.stream().getData();
+          return 'data:image/gif;base64,'+encode64(binaryGIF);
+        }
+
+        function getRandomColor() {
+          return [Math.random(), Math.random(), Math.random(), 1.0];
+        }
+
+        async function superNova(context, posList) {
+          posList.forEach(async function (pos) {
+            await nova(context, {
+              width: img.width,
+              height: img.height,
+              xcenter: pos.x,
+              ycenter: pos.y,
+              color: rgbdata || getRandomColor(),
+              radius: clampedValue('radius', 0, 100),
+              nspoke: clampedValue('nspoke', 1, 100),
+              randomhue: clampedValue('randomhue', 0, 360),
+            });
           });
-        });
-      }
+        }
 
-      function animateSuperNova (posList) {
-        var dataURL = generateAniGIFDataURL(posList);
-        var preview = document.getElementById('animated-preview');
-        preview.style.display = 'inline';
-        preview.src = dataURL;
-      }
-
-      function loadFile (file) {
-          var reader = new FileReader();
-          reader.onloadend = function () {
-            img.src = reader.result;
-            reset.click();
-          };
-          reader.readAsDataURL(file);
-      }
-
-
-      var rgbdata;
-      var clickedPosList = [];
-      var color = document.getElementById("color");
-      var background = document.getElementById("background");
-      var colorvalue = document.getElementById("colorvalue");
-      var colorview = document.getElementById("colorview");
-      var reset = document.getElementById("reset");
-      var redraw = document.getElementById("redraw");
-      var desc = document.getElementById("desc");
-      var dropbox = document.getElementById("canvas");
-      var canvas = document.getElementById('canvas');
-      var img = document.getElementById('pic');
-      var scaling = document.getElementById('scaling');
-      var context = canvas.getContext('2d');
-      var scale = 1.0;
-
-
-      img.addEventListener(
-        'load',
-        function () {
-          desc.textContent = "光らせたい場所をクリックしてね！";
-          setCanvasWidthHeight();
-          drawBaseImage(context);
-        },
-        false
-      );
-
-      scaling.addEventListener(
-        'change',
-        function () {
-          var oldScale = scale;
-          scale = parseFloat(scaling.value);
-          for (var i in clickedPosList) {
-            clickedPosList[i].x = clickedPosList[i].x / oldScale * scale;
-            clickedPosList[i].y = clickedPosList[i].y / oldScale * scale;
-          }
-          redraw.click();
-        },
-        false
-      );
-
-      reset.addEventListener(
-        'click',
-        function () {
-          if (!img.src) {
-            return;
-          }
+        function animateSuperNova (posList) {
+          var dataURL = generateAniGIFDataURL(posList);
           var preview = document.getElementById('animated-preview');
-          preview.style.display = 'none';
-
-          clickedPosList = [];
-
-          setCanvasWidthHeight();
-          drawBaseImage(context);
-        },
-        true
-      );
-
-      redraw.addEventListener(
-        'click',
-        function () {
-          if (!img.src) {
-            return;
-          }
-          setCanvasWidthHeight();
-          drawBaseImage(context);
-          // 静止画 canvas を更新
-          superNova(context, clickedPosList);
-          // アニメ GIF の img 要素を更新
-          if (clickedPosList.length > 0) {
-            animateSuperNova(clickedPosList);
-          }
-        },
-        true
-      );
-
-      dropbox.addEventListener(
-        'dragenter',
-        function (e) {
-          e.stopPropagation();
-          e.preventDefault();
-        },
-        false
-      );
-
-      dropbox.addEventListener(
-        'dragover',
-        function (e) {
-          e.stopPropagation();
-          e.preventDefault();
-        },
-        false
-      );
-
-      dropbox.addEventListener(
-        'drop',
-        function (e) {
-          e.stopPropagation();
-          e.preventDefault();
-          loadFile(e.dataTransfer.files[0]);
-        },
-        false
-      );
-
-      canvas.addEventListener(
-        'click',
-        function (e) {
-          if (!img.src) {
-            return;
-          }
-          desc.textContent = "光らせた画像は、右クリックメニューから保存できるよ！";
-          clickedPosList.push({
-            x: e.pageX - e.target.offsetLeft - 2,
-            y: e.pageY - e.target.offsetTop - 2,
-          });
-          setCanvasWidthHeight();
-          drawBaseImage(context);
-          // 静止画 canvas を更新
-          superNova(context, clickedPosList);
-          // アニメ GIF の img 要素を更新
-          animateSuperNova(clickedPosList);
-        },
-        true
-      );
-
-      (function () {
-        var params = {};
-        location.search.slice(1).split('&').forEach(function (it) {
-          var parts = it.split('=');
-          params[parts[0]] = parts[1];
-        });
-
-        if (params.image)
-          img.src = decodeURIComponent(params.image);
-      })();
-
-      (function () {
-        function colorOnChange () {
-          if (color.value == 'Random') {
-            rgbdata = null;
-            colorvalue.textContent = 'Random';
-          } else {
-            var context = colorview.getContext('2d');
-            context.fillStyle = color.value;
-            context.fillRect(0, 0, 100, 100);
-            var cs = context.getImageData(0, 0, 1, 1).data;
-            rgbdata = [cs[0] / 255, cs[1] / 255, cs[2] / 255];
-          }
-          colorvalue.textContent = cs.slice(0, 3);
+          preview.style.display = 'inline';
+          preview.src = dataURL;
         }
 
-        color.addEventListener(
+        function loadFile (file) {
+            var reader = new FileReader();
+            reader.onloadend = function () {
+              img.src = reader.result;
+              reset.click();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        window.loadFile = loadFile;
+
+        var rgbdata;
+        var clickedPosList = [];
+        var color = document.getElementById("color");
+        var background = document.getElementById("background");
+        var colorvalue = document.getElementById("colorvalue");
+        var colorview = document.getElementById("colorview");
+        var reset = document.getElementById("reset");
+        var redraw = document.getElementById("redraw");
+        var desc = document.getElementById("desc");
+        var dropbox = document.getElementById("canvas");
+        var canvas = document.getElementById('canvas');
+        var img = document.getElementById('pic');
+        var scaling = document.getElementById('scaling');
+        var context = canvas.getContext('2d');
+        var scale = 1.0;
+
+
+        img.addEventListener(
+          'load',
+          function () {
+            desc.textContent = "光らせたい場所をクリックしてね！";
+            setCanvasWidthHeight();
+            drawBaseImage(context);
+          },
+          false
+        );
+
+        scaling.addEventListener(
           'change',
-          colorOnChange,
+          function () {
+            var oldScale = scale;
+            scale = parseFloat(scaling.value);
+            for (var i in clickedPosList) {
+              clickedPosList[i].x = clickedPosList[i].x / oldScale * scale;
+              clickedPosList[i].y = clickedPosList[i].y / oldScale * scale;
+            }
+            redraw.click();
+          },
+          false
+        );
+
+        reset.addEventListener(
+          'click',
+          function () {
+            if (!img.src) {
+              return;
+            }
+            var preview = document.getElementById('animated-preview');
+            preview.style.display = 'none';
+
+            clickedPosList = [];
+
+            setCanvasWidthHeight();
+            drawBaseImage(context);
+          },
           true
         );
 
-        colorOnChange();
-      })();
+        redraw.addEventListener(
+          'click',
+          function () {
+            if (!img.src) {
+              return;
+            }
+            setCanvasWidthHeight();
+            drawBaseImage(context);
+            // 静止画 canvas を更新
+            superNova(context, clickedPosList).then(() => {
+              // アニメ GIF の img 要素を更新
+              if (clickedPosList.length > 0) {
+                animateSuperNova(clickedPosList);
+              }
+            });
+          },
+          true
+        );
+
+        dropbox.addEventListener(
+          'dragenter',
+          function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+          },
+          false
+        );
+
+        dropbox.addEventListener(
+          'dragover',
+          function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+          },
+          false
+        );
+
+        dropbox.addEventListener(
+          'drop',
+          function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            loadFile(e.dataTransfer.files[0]);
+          },
+          false
+        );
+
+        canvas.addEventListener(
+          'click',
+          function (e) {
+            if (!img.src) {
+              return;
+            }
+            desc.textContent = "光らせた画像は、右クリックメニューから保存できるよ！";
+            clickedPosList.push({
+              x: e.pageX - e.target.offsetLeft - 2,
+              y: e.pageY - e.target.offsetTop - 2,
+            });
+            setCanvasWidthHeight();
+            drawBaseImage(context);
+            // 静止画 canvas を更新
+            superNova(context, clickedPosList);
+            // アニメ GIF の img 要素を更新
+            animateSuperNova(clickedPosList);
+          },
+          true
+        );
+
+        (function () {
+          var params = {};
+          location.search.slice(1).split('&').forEach(function (it) {
+            var parts = it.split('=');
+            params[parts[0]] = parts[1];
+          });
+
+          if (params.image)
+            img.src = decodeURIComponent(params.image);
+        })();
+
+        (function () {
+          function colorOnChange () {
+            if (color.value == 'Random') {
+              rgbdata = null;
+              colorvalue.textContent = 'Random';
+            } else {
+              var context = colorview.getContext('2d');
+              context.fillStyle = color.value;
+              context.fillRect(0, 0, 100, 100);
+              var cs = context.getImageData(0, 0, 1, 1).data;
+              rgbdata = [cs[0] / 255, cs[1] / 255, cs[2] / 255];
+            }
+            colorvalue.textContent = cs.slice(0, 3);
+          }
+
+          color.addEventListener(
+            'change',
+            colorOnChange,
+            true
+          );
+
+          colorOnChange();
+        })();
+
+      }
+
+      initialize();
 
     </script>
 
     <!-- }}} -->
 
     <script src="lib/wiv/wiv.js"></script>
+
   </body>
 </html>
