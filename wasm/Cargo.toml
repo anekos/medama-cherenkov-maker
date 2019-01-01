@@ -1,0 +1,11 @@
+[package]
+name = "cherenkov"
+version = "0.1.0"
+authors = ["anekos <anekos@snca.net>"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+closet = "*"
+crossbeam = "0.4"
